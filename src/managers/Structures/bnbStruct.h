@@ -2,8 +2,6 @@
 #define BNBSTRUCT_H
 #include "../../utils.h"
 
-int g_heapsize = 512;
-
 typedef struct 
 {   
     int pid_proceso;
@@ -14,6 +12,6 @@ typedef struct
     int stack;
 } bnbProcess;
 
-bnbProcess* init_bnbProcess_array();
+bnbProcess* init_bnbProcess_array(int proc_amount);
 
 #endif
