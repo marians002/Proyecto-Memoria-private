@@ -10,7 +10,7 @@ int current_process_index = -1; // Pid del proceso actual
 
 // Busca un proceso en el array de procesos por su pid
 // Devuelve el indice si encuentra el proceso, else -1
-int find_proc(int pid) 
+int bnb_find_proc(int pid) 
 {
   for (int i = 0; i < cant_procesos; i++)
   {
@@ -162,7 +162,7 @@ void m_bnb_on_ctx_switch(process_t process) {
   int new_proc_pid = process.pid;
   int c_size = process.program->size;
 
-  int result = find_proc(new_proc_pid);
+  int result = bnb_find_proc(new_proc_pid);
   if (result != -1) // Encontró el proceso en el array
     current_process_index = result;
   else // El proceso no estaba en el array
@@ -188,6 +188,9 @@ void m_bnb_on_end_process(process_t process) {
   for (int i = 0; i < cant_procesos; i++) 
   {
     if (array_procesos[i].pid_proceso == process.pid)
-        array_procesos[i].pid_proceso = -1;
-  }
+    {
+      array_procesos[i].pid_proceso = -1;
+      m_unset_owner(array_procesos[i].base, array_procesos[i].base + process_size - 1);
+    }        
+  }  
 }
