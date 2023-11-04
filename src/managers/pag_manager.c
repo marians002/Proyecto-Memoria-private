@@ -6,10 +6,10 @@
 
 pagStruct* array_procs;
 int curr_proc_index = -1; // Indice del proceso actual en el array
-int page_size = 256; // tamaño de las páginas
+int page_size = 512; // tamaño de las páginas
 int cant_pages = 4; // cantidad de páginas en la memoria virtual
 int page_frame_size = -1; // cantidad de páginas en la memora física
-int* page_frame; // indica a que page_frame pertenece en la memoria física
+int* page_frame_mapping; // indica a que page_frame pertenece en la memoria física
 
 // Inicializa el array de page frame
 int* init_page_frame()
@@ -18,7 +18,7 @@ int* init_page_frame()
     int* pageFrame = (int*)malloc(page_frame_size * sizeof(int));
     
     for (int i = 0; i < page_frame_size; i++) {
-        page_frame[i] = -1;
+        page_frame_mapping[i] = -1;
         array_procs[i].proc_pid = -1;  
         array_procs[i].proc_stack = initialize(10000);
         
@@ -53,13 +53,89 @@ int first_empty()
 }
 
 // Devuelve el primer frame page vacío, else -1
-int first_empty_frame() {
+int first_empty_frame() 
+{
   for (int i = 0; i < page_frame_size; i++) 
   {
-    if (page_frame[i] == -1)
+    if (page_frame_mapping[i] == -1)
       return i;
   }
   return -1;
+}
+
+// Función para setear el owner según el empty frame encontrado
+void set_owner(int emp_fr)
+{
+  m_set_owner(emp_fr * 512, emp_fr * 512 + 511);
+}
+
+// Función para actualizar el mapeo según el empty frame
+void set_mapping(int emp_fr)
+{
+  page_frame_mapping[emp_fr] = array_procs[curr_proc_index].proc_pid;
+}
+
+// Función para setear un valor en una página del array de procesos
+void set_pages(int ind, int emp_fr)
+{
+  array_procs[curr_proc_index].pages[ind] = emp_fr;
+}
+
+// Función para establecer un valor en una posición de la matriz actual
+void set_data(int i, int j, int val)
+{
+  array_procs[curr_proc_index].data[i][j] = val;
+}
+
+// Mapeo a la dirección real
+int page_addr_mod(int ind)
+{
+  return ind % 512;
+}
+
+// Mapeo a la dirección real
+int local_addr_div(int ind)
+{
+  return ind / 512;
+}
+
+// Función para escribir en el heap
+int set_heap_values(int val, int size, int ind)
+{
+  int local = local_addr_div(ind);
+  int m_page = page_addr(ind); 
+  int count = 0;
+
+  for (int i = m_page; i < 4; i++) 
+  {
+    int j;
+
+    if (i == m_page)
+      j=local;
+    else
+      j = 0;
+
+    while (j < 512)
+    {
+      if (count == size) 
+        return 0;
+      count++;
+      j++;
+      set_data(i, j, val);
+    }     
+  }
+  return 0;
+}
+
+// 1 => page libre, else 0
+int free_page(int page)
+{  
+  for (int i = 0; i < 512; i++) 
+  {
+    if (array_procs[curr_proc_index].data[page][i] != 0)
+      return 0;
+  }
+  return 1;
 }
 
 // Esta función se llama cuando se inicializa un caso de prueba
@@ -69,14 +145,61 @@ void m_pag_init(int argc, char **argv) {
   // Inicializa el array de procesos
   array_procs = init_pagProcs_array(page_frame_size);
   // Almacena memoria para el array de page frame
-  page_frame = init_page_frame();
+  page_frame_mapping = init_page_frame();
 }
 
 // Reserva un espacio en el heap de tamaño 'size' y establece un puntero al
 // inicio del espacio reservado.
 int m_pag_malloc(size_t size, ptr_t *out) {
-  fprintf(stderr, "Not Implemented\n");
-  exit(1);
+  int start = -1;
+  int count = 0;
+
+  // Recorrer toda la matriz
+  for (int i = 0; i < 4; i++) 
+  {
+    for (int j = 0; j < 512; j++)
+    {
+      // Caso donde necesito una nueva página
+      if (array_procs[curr_proc_index].pages[i] == -1) 
+      {
+        // Obtengo el primer frame vacío
+        int empty_frame = first_empty_frame();
+        // Si hubo alguno vacío: 
+        if (empty_frame != -1) 
+        {
+          set_mapping(empty_frame);  
+          set_pages(i, empty_frame);
+          set_owner(empty_frame);
+        } 
+        else // No hubo ningún frame vacío y no se puede avanzar
+          return 1;
+      }
+
+      // Caso donde tengo la página vacía
+      if (array_procs[curr_proc_index].data[i][j] == 0) 
+      {
+        count++;
+        if (start == -1)
+          start = (i + 1) * j;
+      } 
+      else 
+      {
+        count = 0;
+        start = -1;
+      }
+
+      // Si ya tengo el espacio que necesito
+      if (count == size) 
+      { 
+        out->size = size;
+        out->addr = start;
+        
+        set_heap_values(1, size, start);
+        return 0;
+      }
+    }
+  }
+  return 1;
 }
 
 // Libera un espacio de memoria dado un puntero.
@@ -87,14 +210,71 @@ int m_pag_free(ptr_t ptr) {
 
 // Agrega un elemento al stack
 int m_pag_push(byte val, ptr_t *out) {
-  fprintf(stderr, "Not Implemented\n");
-  exit(1);
+  // Recorrer la matriz
+  for (int i = 0; i < 4; i++) 
+  {
+    for (int j = 0; j < 512; j++)
+    {
+      
+      // Caso donde se necesita un nuevo page
+      if (array_procs[curr_proc_index].pages[i] == -1) 
+      {
+        int empty_frame = empty_page_frame();
+        
+        // Si se encontró un frame vacío 
+        if (empty_frame != -1) 
+        {
+          set_mapping(empty_frame);
+          set_pages(i, empty_frame);
+          set_owner(empty_frame);
+        }
+        else
+          return 1;
+      }
+
+      if (array_procs[curr_proc_index].data[i][j] == 0) 
+      {
+        int index = array_procs[curr_proc_index].pages[i] * 512 + j;
+        int val = i * 512 + j;
+        
+        // Escribe en la memoria
+        m_write(index, val);
+
+        // Pusheo el valor a mi stack
+        push(array_procs[curr_proc_index].proc_stack, val);
+        set_data(i, j, 2);
+        
+        if (array_procs[curr_proc_index].proc_pid == 0 && val == 243)
+          return 0;
+      } 
+    }
+  }
+  return 1;
 }
 
 // Quita un elemento del stack
 int m_pag_pop(byte *out) {
-  fprintf(stderr, "Not Implemented\n");
-  exit(1);
+  // Obtengo el último elemento del stack sin sacarlo aún
+  int dir = get_tail(array_procs[curr_proc_index].proc_stack);
+  // Saco el elemento
+  pop(array_procs[curr_proc_index].proc_stack);
+  
+  int local = local_addr_div(dir);
+  int page = page_addr_mod(dir);
+
+  set_data(page, local, 0);
+
+  // La página page está libre
+  if (free_page(page) == 1) 
+  {
+    int phs_mem_page = array_procs[curr_proc_index].pages[page];
+    page_frame_mapping[phs_mem_page] = -1;
+    array_procs[curr_proc_index].pages[page] = -1;
+    m_unset_owner((phs_mem_page + 1) * 512, (phs_mem_page + 1) * 512 + 511);
+  }
+  int a = array_procs[curr_proc_index].pages[page] * 512 + local;
+  *out = m_read(a);
+  return 0;
 }
 
 // Carga el valor en una dirección determinada
@@ -111,6 +291,7 @@ int m_pag_store(addr_t addr, byte val) {
 
 // Notifica un cambio de contexto al proceso 'next_pid'
 void m_pag_on_ctx_switch(process_t process) {
+  
   // Almacena la posición en el array de procesos donde se encuentra el proceso que entró
   int index = find_proc(process.pid);
 
@@ -133,16 +314,16 @@ void m_pag_on_ctx_switch(process_t process) {
       if (empty_frame != -1)
       {
         // Establezco el pid del proceso nuevo en el page frame
-        page_frame[empty_frame] = array_procs[curr_proc_index].proc_pid;
-        array_procs[curr_proc_index].pages[0] = empty_frame;
-        m_set_owner(empty_frame * 256, empty_frame * 256 + 255);
+        set_mapping(empty_frame);
+        set_pages(0, empty_frame);
+        set_owner(empty_frame);
 
         // Modificar el frame para escribir el código en él
-        int fr_code = process.program->size % 256;
+        int fr_code = process.program->size % 512;
         
         for (int i = 0; i <= fr_code; i++) 
         {
-          array_procs[curr_proc_index].data[0][i] = 3;
+          set_data(0, i, 3);  // lo relleno con un 3 que representa que es código
         }
         return;
       }

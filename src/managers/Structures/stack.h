@@ -15,6 +15,7 @@ int is_empty(stack* s);
 int size(stack* s);
 void push(stack* s, int element);
 int pop(stack* s);
+int get_tail(stack* s);
 
 
 #endif

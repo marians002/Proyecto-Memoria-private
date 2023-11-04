@@ -39,7 +39,7 @@ int m_malloc(size_t size, ptr_t *out) {
   } else if (g_manager == SEG_MANAGER) {
     m_seg_malloc(size, out);
   } else if (g_manager == PAG_MANAGER) {
-    m_pag_malloc(size, out);
+    return m_pag_malloc(size, out);
   }
   return 1;
 }
@@ -50,7 +50,7 @@ int m_free(ptr_t ptr) {
   } else if (g_manager == SEG_MANAGER) {
     m_seg_free(ptr);
   } else if (g_manager == PAG_MANAGER) {
-    m_pag_free(ptr);
+    return m_pag_free(ptr);
   }
   return 1;
 }
@@ -61,7 +61,7 @@ int m_push(byte val, ptr_t *out) {
   } else if (g_manager == SEG_MANAGER) {
     m_seg_push(val, out);
   } else if (g_manager == PAG_MANAGER) {
-    m_pag_push(val, out);
+    return m_pag_push(val, out);
   }
   return 1;
 }
@@ -72,7 +72,7 @@ int m_pop(byte *out) {
   } else if (g_manager == SEG_MANAGER) {
     m_seg_pop(out);
   } else if (g_manager == PAG_MANAGER) {
-    m_pag_pop(out);
+    return m_pag_pop(out);
   }
   return 1;
 }
@@ -83,7 +83,7 @@ int m_load(addr_t addr, byte *out) {
   } else if (g_manager == SEG_MANAGER) {
     m_seg_load(addr, out);
   } else if (g_manager == PAG_MANAGER) {
-    m_pag_load(addr, out);
+    return m_pag_load(addr, out);
   }
   return 1;
 }
@@ -94,7 +94,7 @@ int m_store(addr_t addr, byte val) {
   } else if (g_manager == SEG_MANAGER) {
     m_seg_store(addr, val);
   } else if (g_manager == PAG_MANAGER) {
-    m_pag_store(addr, val);
+    return m_pag_store(addr, val);
   }
   return 1;
 }
@@ -105,7 +105,7 @@ void m_on_ctx_switch(process_t process) {
   } else if (g_manager == SEG_MANAGER) {
     m_seg_on_ctx_switch(process);
   } else if (g_manager == PAG_MANAGER) {
-    m_pag_on_ctx_switch(process);
+    return m_pag_on_ctx_switch(process);
   }
 }
 
@@ -115,6 +115,6 @@ void m_on_end_process(process_t process) {
   } else if (g_manager == SEG_MANAGER) {
     m_seg_on_end_process(process);
   } else if (g_manager == PAG_MANAGER) {
-    m_pag_on_end_process(process);
+    return m_pag_on_end_process(process);
   }
 }
