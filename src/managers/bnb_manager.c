@@ -44,7 +44,7 @@ void reserve_space(int start, int end)
 // Limpia un espacio determinado en el heap
 void free_space(int start, int end)
 {
-    for (int i = start; i < end + 1; i++)
+    for (int i = start; i < end; i++)
     {
         array_procesos[current_process_index].heap[i] = 0;
     }
@@ -96,7 +96,7 @@ int m_bnb_malloc(size_t size, ptr_t *out) {
 
 // Libera un espacio de memoria dado un puntero.
 int m_bnb_free(ptr_t ptr) {
-  free_space(ptr.addr, ptr.addr + ptr.size - 1);
+  free_space(ptr.addr, ptr.addr + ptr.size);
   return 0;
 }
 
@@ -108,7 +108,7 @@ int m_bnb_push(byte val, ptr_t *out) {
     if (curr_stack >= process_size)
         return 1;
 
-    // Definir la direccion de memoria donde se va a escribir
+    // Definir la dirección de memoria donde se va a escribir
     addr_t addr = curr_stack + curr_base; 
     // Escribe en esa dirección
     m_write(addr, val);

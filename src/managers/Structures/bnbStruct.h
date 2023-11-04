@@ -1,6 +1,5 @@
 #ifndef BNBSTRUCT_H
 #define BNBSTRUCT_H
-#include "../../utils.h"
 
 typedef struct 
 {   
